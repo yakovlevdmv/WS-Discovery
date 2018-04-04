@@ -15,9 +15,23 @@ import (
 	"golang.org/x/net/ipv4"
 	"time"
 	"log"
+	"github.com/satori/go.uuid"
 )
 
 const bufSize  = 8192
+
+func SendProbe(interfaceName string, scopes, types []string, namespaces map[string]string) []string{
+	// Creating UUID Version 4
+	uuidV4 := uuid.Must(uuid.NewV4())
+	fmt.Printf("UUIDv4: %s\n", uuidV4)
+
+	probeSOAP := BuildProbeMessage(uuidV4.String(), scopes, types, namespaces)
+
+	fmt.Println(probeSOAP)
+
+	return sendUDPMulticast(probeSOAP.String(), interfaceName)
+
+}
 
 func sendUDPMulticast (msg string, interfaceName string) []string {
 	var result []string

@@ -1,57 +1,26 @@
 package WS_Discovery
 
 import (
-	"fmt"
-	"os"
 	"github.com/beevik/etree"
-	"github.com/satori/go.uuid"
-	"strconv"
+	"github.com/yakovlevdmv/gosoap"
+	"fmt"
+	"strings"
 )
 
-const (
-	WS_namespace = "http://docs.oasis-open.org/ws-dd/ns/discovery/2009/01"
-	multicast_ip = "239.255.255.250"
-	multicast_port = 3702
-)
-
-var deviceTypes = map[DeviceType]string{
-	NVD : "NetworkVideoDisplay",
-	NVS : "NetworkVideoStorage",
-	NVA : "NetworkVideoAnalytics",
-	NVT : "NetworkVideoTransmitter",
-}
-
-type DeviceType int
-
-const (
-	NVD DeviceType = iota
-	NVS
-	NVA
-	NVT
-)
-
-func (devType DeviceType) String() string {
-	stringRepresentation := []string {
-		"NVD : Network Video Display",
-		"NVS : Network Video Storage",
-		"NVA : Network Video Analytics",
-		"NVT : Network Video Transmitter",
-	}
-	i := uint8(devType)
-	switch {
-	case i <= uint8(NVT):
-		return stringRepresentation[i]
-	default:
-		return strconv.Itoa(int(i))
-	}
-}
-
-func BuildProbeMessage(uuidV4 string, scopes, types []string) string {
+func BuildProbeMessage(uuidV4 string, scopes, types []string, nmsp map[string]string) gosoap.SoapMessage {
 	//Список namespace
 	namespaces := make(map[string]string)
 	namespaces["a"] = "http://www.w3.org/2005/08/addressing"
 	namespaces["d"] = "http://schemas.xmlsoap.org/ws/2005/04/discovery"
-	namespaces["dn"] = "http://www.onvif.org/ver10/network/wsdl"
+
+	probeMessage := gosoap.NewEmptySOAP()
+	
+	probeMessage.AddRootNamespaces(namespaces)
+	if len(nmsp) != 0 {
+		probeMessage.AddRootNamespaces(nmsp)
+	}
+
+	fmt.Println(probeMessage.String())
 
 	//Содержимое Head
 	var headerContent []*etree.Element
@@ -71,39 +40,32 @@ func BuildProbeMessage(uuidV4 string, scopes, types []string) string {
 	to.CreateAttr("mustUnderstand", "1")
 
 	headerContent = append(headerContent, action, msgID, replyTo, to)
+	probeMessage.AddHeaderContents(headerContent)
 
 	//Содержимое Body
-	var bodyContent []*etree.Element
-
 	probe := etree.NewElement("d:Probe")
+
 	typesTag := etree.NewElement("d:Types")
-	typesTag.SetText("dn:" + deviceTypes[NVT])
-	probe.AddChild(typesTag)
-	scopesTag := etree.NewElement("d:Scopes")
-	probe.AddChild(scopesTag)
-	bodyContent = append(bodyContent, probe)
-
-	return BuildSoapMessage(headerContent, bodyContent, namespaces)
-}
-
-func SendProbe(interfaceName string) []string{
-	// Creating UUID Version 4
-	uuidV4 := uuid.Must(uuid.NewV4())
-	fmt.Printf("UUIDv4: %s\n", uuidV4)
-
-	types := []string{NVT.String()}
-
-	probeSOAP := BuildProbeMessage(uuidV4.String(), nil, types)
-
-	fmt.Println(probeSOAP)
-
-	return sendUDPMulticast(probeSOAP, interfaceName)
-
-}
-
-func checkError(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-		os.Exit(1)
+	var typesString string
+	for _, j := range types {
+		typesString += j
+		typesString += " "
 	}
+
+	typesTag.SetText(strings.TrimSpace(typesString))
+
+	scopesTag := etree.NewElement("d:Scopes")
+	var scopesString string
+	for _, j := range scopes {
+		scopesString += j
+		scopesString += " "
+	}
+	scopesTag.SetText(strings.TrimSpace(scopesString))
+
+	probe.AddChild(typesTag)
+	probe.AddChild(scopesTag)
+
+	probeMessage.AddBodyContent(probe)
+
+	return probeMessage
 }
