@@ -25,7 +25,7 @@ func SendProbe(interfaceName string, scopes, types []string, namespaces map[stri
 	uuidV4 := uuid.Must(uuid.NewV4())
 	fmt.Printf("UUIDv4: %s\n", uuidV4)
 
-	probeSOAP := BuildProbeMessage(uuidV4.String(), scopes, types, namespaces)
+	probeSOAP := buildProbeMessage(uuidV4.String(), scopes, types, namespaces)
 
 	fmt.Println(probeSOAP)
 

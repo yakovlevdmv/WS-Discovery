@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func BuildProbeMessage(uuidV4 string, scopes, types []string, nmsp map[string]string) gosoap.SoapMessage {
+func buildProbeMessage(uuidV4 string, scopes, types []string, nmsp map[string]string) gosoap.SoapMessage {
 	//Список namespace
 	namespaces := make(map[string]string)
 	namespaces["a"] = "http://www.w3.org/2005/08/addressing"
