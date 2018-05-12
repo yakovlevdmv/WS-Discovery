@@ -3,30 +3,29 @@ package WS_Discovery
 import (
 	"github.com/beevik/etree"
 	"github.com/yakovlevdmv/gosoap"
-	"fmt"
 	"strings"
 )
 
 func buildProbeMessage(uuidV4 string, scopes, types []string, nmsp map[string]string) gosoap.SoapMessage {
 	//Список namespace
 	namespaces := make(map[string]string)
-	namespaces["a"] = "http://www.w3.org/2005/08/addressing"
-	namespaces["d"] = "http://schemas.xmlsoap.org/ws/2005/04/discovery"
+	namespaces["a"] = "http://schemas.xmlsoap.org/ws/2004/08/addressing"
+	//namespaces["d"] = "http://schemas.xmlsoap.org/ws/2005/04/discovery"
 
 	probeMessage := gosoap.NewEmptySOAP()
 	
 	probeMessage.AddRootNamespaces(namespaces)
-	if len(nmsp) != 0 {
-		probeMessage.AddRootNamespaces(nmsp)
-	}
+	//if len(nmsp) != 0 {
+	//	probeMessage.AddRootNamespaces(nmsp)
+	//}
 
-	fmt.Println(probeMessage.String())
+	//fmt.Println(probeMessage.String())
 
 	//Содержимое Head
 	var headerContent []*etree.Element
 
 	action := etree.NewElement("a:Action")
-	action.SetText("http://docs.oasis-open.org/ws-dd/ns/discovery/2009/01/Probe")
+	action.SetText("http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe")
 	action.CreateAttr("mustUnderstand", "1")
 
 	msgID := etree.NewElement("a:MessageID")
@@ -43,27 +42,40 @@ func buildProbeMessage(uuidV4 string, scopes, types []string, nmsp map[string]st
 	probeMessage.AddHeaderContents(headerContent)
 
 	//Содержимое Body
-	probe := etree.NewElement("d:Probe")
+	probe := etree.NewElement("Probe")
+	probe.CreateAttr("xmlns", "http://schemas.xmlsoap.org/ws/2005/04/discovery")
 
-	typesTag := etree.NewElement("d:Types")
-	var typesString string
-	for _, j := range types {
-		typesString += j
-		typesString += " "
+	if len(types) != 0 {
+		typesTag := etree.NewElement("d:Types")
+		if len(nmsp) != 0 {
+			for key, value := range nmsp {
+				typesTag.CreateAttr("xmlns:" + key, value)
+			}
+		}
+		typesTag.CreateAttr("xmlns:d", "http://schemas.xmlsoap.org/ws/2005/04/discovery")
+		//typesTag.CreateAttr("xmlns:dp0", "http://www.onvif.org/ver10/network/wsdl")
+		var typesString string
+		for _, j := range types {
+			typesString += j
+			typesString += " "
+		}
+
+		typesTag.SetText(strings.TrimSpace(typesString))
+
+		probe.AddChild(typesTag)
 	}
 
-	typesTag.SetText(strings.TrimSpace(typesString))
+	if len(scopes) != 0 {
+		scopesTag := etree.NewElement("d:Scopes")
+		var scopesString string
+		for _, j := range scopes {
+			scopesString += j
+			scopesString += " "
+		}
+		scopesTag.SetText(strings.TrimSpace(scopesString))
 
-	scopesTag := etree.NewElement("d:Scopes")
-	var scopesString string
-	for _, j := range scopes {
-		scopesString += j
-		scopesString += " "
+		probe.AddChild(scopesTag)
 	}
-	scopesTag.SetText(strings.TrimSpace(scopesString))
-
-	probe.AddChild(typesTag)
-	probe.AddChild(scopesTag)
 
 	probeMessage.AddBodyContent(probe)
 
